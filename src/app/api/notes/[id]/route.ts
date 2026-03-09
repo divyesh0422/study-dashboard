@@ -12,6 +12,8 @@ import {
   internalErrorResponse,
 } from "@/lib/utils/api";
 
+type RouteContext = { params: Promise<{ id: string }> };
+
 async function getNoteOrFail(id: string, userId: string) {
   const note = await prisma.note.findUnique({ where: { id } });
   if (!note) return { error: notFoundResponse("Note") };
@@ -19,16 +21,18 @@ async function getNoteOrFail(id: string, userId: string) {
   return { note };
 }
 
-export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
-    const { error } = await getNoteOrFail(params.id, session.user.id);
+    const { error } = await getNoteOrFail(id, session.user.id);
     if (error) return error;
 
     const note = await prisma.note.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { subject: { select: { id: true, name: true, color: true } } },
     });
 
@@ -39,12 +43,14 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
-    const { error } = await getNoteOrFail(params.id, session.user.id);
+    const { error } = await getNoteOrFail(id, session.user.id);
     if (error) return error;
 
     const body = await req.json();
@@ -52,7 +58,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (!parsed.success) return handleZodError(parsed.error);
 
     const updated = await prisma.note.update({
-      where: { id: params.id },
+      where: { id },
       data: parsed.data,
       include: { subject: { select: { id: true, name: true, color: true } } },
     });
@@ -64,15 +70,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
-    const { error } = await getNoteOrFail(params.id, session.user.id);
+    const { error } = await getNoteOrFail(id, session.user.id);
     if (error) return error;
 
-    await prisma.note.delete({ where: { id: params.id } });
+    await prisma.note.delete({ where: { id } });
     return successResponse({ deleted: true });
   } catch (err) {
     console.error("[NOTE_DELETE]", err);

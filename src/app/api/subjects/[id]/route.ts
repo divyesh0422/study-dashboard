@@ -12,6 +12,8 @@ import {
   internalErrorResponse,
 } from "@/lib/utils/api";
 
+type RouteContext = { params: Promise<{ id: string }> };
+
 async function getSubjectOrFail(id: string, userId: string) {
   const subject = await prisma.subject.findUnique({ where: { id } });
   if (!subject) return { error: notFoundResponse("Subject") };
@@ -19,22 +21,24 @@ async function getSubjectOrFail(id: string, userId: string) {
   return { subject };
 }
 
-export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
-    const { subject, error } = await getSubjectOrFail(params.id, session.user.id);
+    const { subject, error } = await getSubjectOrFail(id, session.user.id);
     if (error) return error;
 
     const [completedTasks, allTasks, sessions, notes] = await Promise.all([
-      prisma.task.count({ where: { subjectId: params.id, status: "COMPLETED" } }),
-      prisma.task.count({ where: { subjectId: params.id } }),
+      prisma.task.count({ where: { subjectId: id, status: "COMPLETED" } }),
+      prisma.task.count({ where: { subjectId: id } }),
       prisma.studySession.aggregate({
-        where: { subjectId: params.id, completed: true },
+        where: { subjectId: id, completed: true },
         _sum: { duration: true },
       }),
-      prisma.note.count({ where: { subjectId: params.id } }),
+      prisma.note.count({ where: { subjectId: id } }),
     ]);
 
     return successResponse({
@@ -52,12 +56,14 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
-    const { error } = await getSubjectOrFail(params.id, session.user.id);
+    const { error } = await getSubjectOrFail(id, session.user.id);
     if (error) return error;
 
     const body = await req.json();
@@ -65,7 +71,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (!parsed.success) return handleZodError(parsed.error);
 
     const updated = await prisma.subject.update({
-      where: { id: params.id },
+      where: { id },
       data: parsed.data,
     });
 
@@ -76,15 +82,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
-    const { error } = await getSubjectOrFail(params.id, session.user.id);
+    const { error } = await getSubjectOrFail(id, session.user.id);
     if (error) return error;
 
-    await prisma.subject.delete({ where: { id: params.id } });
+    await prisma.subject.delete({ where: { id } });
 
     return successResponse({ deleted: true });
   } catch (err) {

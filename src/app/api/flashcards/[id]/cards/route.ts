@@ -1,53 +1,87 @@
-// src/app/api/flashcards/[id]/cards/route.ts
-
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
-import { flashcardSchema } from "@/lib/validations/flashcard.schema";
-
 import {
   successResponse,
-  handleZodError,
   unauthorizedResponse,
   notFoundResponse,
   forbiddenResponse,
   internalErrorResponse,
 } from "@/lib/utils/api";
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const dynamic = "force-dynamic";
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(req: NextRequest, context: RouteContext) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
 
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
     const deck = await prisma.flashcardDeck.findUnique({
       where: { id },
+      include: { flashcards: true },
     });
 
     if (!deck) return notFoundResponse("Deck");
     if (deck.userId !== session.user.id) return forbiddenResponse();
 
-    const body = await req.json();
-    const parsed = flashcardSchema.safeParse(body);
+    return successResponse(deck);
+  } catch (err) {
+    console.error("[FLASHCARD_GET]", err);
+    return internalErrorResponse();
+  }
+}
 
-    if (!parsed.success) {
-      return handleZodError(parsed.error);
-    }
+export async function PUT(req: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
 
-    const card = await prisma.flashcard.create({
+    const session = await auth();
+    if (!session?.user?.id) return unauthorizedResponse();
+
+    const deck = await prisma.flashcardDeck.findUnique({ where: { id } });
+    if (!deck) return notFoundResponse("Deck");
+    if (deck.userId !== session.user.id) return forbiddenResponse();
+
+    const { title, description, color, subjectId } = await req.json();
+
+    const updated = await prisma.flashcardDeck.update({
+      where: { id },
       data: {
-        ...parsed.data,
-        deckId: id,
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(color !== undefined && { color }),
+        ...(subjectId !== undefined && { subjectId }),
       },
+      include: { flashcards: true },
     });
 
-    return successResponse(card, 201);
+    return successResponse(updated);
   } catch (err) {
-    console.error("[CARD_POST]", err);
+    console.error("[FLASHCARD_PUT]", err);
+    return internalErrorResponse();
+  }
+}
+
+export async function DELETE(req: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+
+    const session = await auth();
+    if (!session?.user?.id) return unauthorizedResponse();
+
+    const deck = await prisma.flashcardDeck.findUnique({ where: { id } });
+    if (!deck) return notFoundResponse("Deck");
+    if (deck.userId !== session.user.id) return forbiddenResponse();
+
+    await prisma.flashcardDeck.delete({ where: { id } });
+
+    return successResponse({ deleted: true });
+  } catch (err) {
+    console.error("[FLASHCARD_DELETE]", err);
     return internalErrorResponse();
   }
 }

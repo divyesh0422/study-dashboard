@@ -12,12 +12,16 @@ import {
   internalErrorResponse,
 } from "@/lib/utils/api";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
-    const studySession = await prisma.studySession.findUnique({ where: { id: params.id } });
+    const studySession = await prisma.studySession.findUnique({ where: { id } });
     if (!studySession) return notFoundResponse("Session");
     if (studySession.userId !== session.user.id) return forbiddenResponse();
 
@@ -29,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const duration = Math.floor((endTime.getTime() - studySession.startTime.getTime()) / 1000);
 
     const updated = await prisma.studySession.update({
-      where: { id: params.id },
+      where: { id },
       data: { endTime, duration, completed: parsed.data.completed },
       include: { subject: { select: { id: true, name: true, color: true } } },
     });

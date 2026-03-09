@@ -12,6 +12,8 @@ import {
   internalErrorResponse,
 } from "@/lib/utils/api";
 
+type RouteContext = { params: Promise<{ id: string }> };
+
 async function getTaskOrFail(id: string, userId: string) {
   const task = await prisma.task.findUnique({ where: { id } });
   if (!task) return { error: notFoundResponse("Task") };
@@ -19,12 +21,14 @@ async function getTaskOrFail(id: string, userId: string) {
   return { task };
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
-    const { error } = await getTaskOrFail(params.id, session.user.id);
+    const { error } = await getTaskOrFail(id, session.user.id);
     if (error) return error;
 
     const body = await req.json();
@@ -32,7 +36,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (!parsed.success) return handleZodError(parsed.error);
 
     const updated = await prisma.task.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...parsed.data,
         ...(parsed.data.dueDate !== undefined && {
@@ -49,12 +53,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
-    const { task, error } = await getTaskOrFail(params.id, session.user.id);
+    const { task, error } = await getTaskOrFail(id, session.user.id);
     if (error) return error;
 
     const body = await req.json();
@@ -64,7 +70,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const isCompleting = parsed.data.status === "COMPLETED" && task!.status !== "COMPLETED";
 
     const updated = await prisma.task.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: parsed.data.status,
         completedAt: isCompleting ? new Date() : null,
@@ -79,15 +85,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
+
     const session = await auth();
     if (!session?.user?.id) return unauthorizedResponse();
 
-    const { error } = await getTaskOrFail(params.id, session.user.id);
+    const { error } = await getTaskOrFail(id, session.user.id);
     if (error) return error;
 
-    await prisma.task.delete({ where: { id: params.id } });
+    await prisma.task.delete({ where: { id } });
     return successResponse({ deleted: true });
   } catch (err) {
     console.error("[TASK_DELETE]", err);
