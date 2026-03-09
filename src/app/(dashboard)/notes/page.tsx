@@ -240,7 +240,7 @@ export default function NotesPage() {
   if (isLoading) return <PageLoader />;
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 animate-fade-in">
+    <div className="p-4 lg:p-8 space-y-6 animate-fade-in">
       <PageHeader
         title="Notes"
         description="Your study notes and summaries"

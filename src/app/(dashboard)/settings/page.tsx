@@ -80,7 +80,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 animate-fade-in max-w-2xl">
+    <div className="p-4 lg:p-8 space-y-6 animate-fade-in max-w-2xl">
       <PageHeader
         title="Settings"
         description="Manage your profile and preferences"
@@ -93,7 +93,7 @@ export default function SettingsPage() {
       />
 
       <Tabs defaultValue="profile">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="profile"><User className="h-3.5 w-3.5 mr-1.5" />Profile</TabsTrigger>
           <TabsTrigger value="timer"><Timer className="h-3.5 w-3.5 mr-1.5" />Timer</TabsTrigger>
           <TabsTrigger value="appearance"><Palette className="h-3.5 w-3.5 mr-1.5" />Theme</TabsTrigger>

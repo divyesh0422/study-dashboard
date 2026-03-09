@@ -96,7 +96,7 @@ export function AIGuideWidget() {
             animate={{ opacity: 1, scale: 1,   y: 0  }}
             exit={{   opacity: 0, scale: 0.9,  y: 20 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="fixed bottom-24 right-6 z-50 w-[360px] rounded-2xl border border-border bg-card shadow-2xl overflow-hidden flex flex-col"
+            className="fixed bottom-36 right-4 md:bottom-24 md:right-6 z-50 w-[calc(100vw-2rem)] max-w-[360px] rounded-2xl border border-border bg-card shadow-2xl overflow-hidden flex flex-col"
             style={{ maxHeight: "520px" }}
           >
             {/* Header */}
@@ -235,7 +235,7 @@ export function AIGuideWidget() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full gradient-purple shadow-lg hover:shadow-xl transition-shadow"
+        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full gradient-purple shadow-lg hover:shadow-xl transition-shadow"
         aria-label="Open AI Study Guide"
       >
         <AnimatePresence mode="wait">

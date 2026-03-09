@@ -31,7 +31,7 @@ export default function TimerPage() {
     .reduce((sum, s) => sum + (s.duration ?? 0), 0);
 
   return (
-    <div className="p-6 lg:p-8 space-y-8 animate-fade-in">
+    <div className="p-4 lg:p-8 space-y-8 animate-fade-in">
       <PageHeader
         title="Study Timer"
         description="Focus with the Pomodoro technique"

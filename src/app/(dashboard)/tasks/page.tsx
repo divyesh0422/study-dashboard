@@ -88,7 +88,7 @@ export default function TasksPage() {
   if (isLoading) return <PageLoader />;
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 animate-fade-in">
+    <div className="p-4 lg:p-8 space-y-6 animate-fade-in">
       <PageHeader
         title="Tasks"
         description="Track and manage your study tasks"
@@ -100,15 +100,15 @@ export default function TasksPage() {
       />
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col gap-3">
         {/* Status Tabs */}
-        <div className="flex items-center rounded-lg border border-border bg-muted/30 p-1 gap-1">
+        <div className="flex items-center rounded-lg border border-border bg-muted/30 p-1 gap-1 overflow-x-auto">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setStatusTab(tab.value)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap",
                 statusTab === tab.value
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -119,19 +119,19 @@ export default function TasksPage() {
           ))}
         </div>
 
-        <div className="flex gap-2 flex-1">
+        <div className="flex flex-wrap gap-2">
           <Input
             placeholder="Search tasks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="max-w-xs"
+            className="flex-1 min-w-[140px]"
           />
 
           <Select
             value={filters.subjectId ?? "none"}
             onValueChange={(v) => setFilters((p) => ({ ...p, subjectId: v === "none" ? undefined : v }))}
           >
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-36 shrink-0">
               <SelectValue placeholder="All subjects" />
             </SelectTrigger>
             <SelectContent>
@@ -146,7 +146,7 @@ export default function TasksPage() {
             value={filters.priority ?? "none"}
             onValueChange={(v) => setFilters((p) => ({ ...p, priority: (v === "none" ? undefined : v) as any }))}
           >
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-32 shrink-0">
               <SelectValue placeholder="Any priority" />
             </SelectTrigger>
             <SelectContent>

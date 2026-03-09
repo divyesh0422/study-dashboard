@@ -34,7 +34,7 @@ export default function DashboardPage() {
   const upcomingTasks = (tasks ?? []).slice(0, 5);
 
   return (
-    <div className="p-6 lg:p-8 space-y-8 animate-fade-in">
+    <div className="p-4 lg:p-8 space-y-8 animate-fade-in">
       <PageHeader
         title={`${greeting()}, ${session?.user?.name?.split(" ")[0] ?? "Student"} 👋`}
         description="Here's your study progress at a glance"

@@ -1,4 +1,5 @@
 // src/app/api/analytics/route.ts
+
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
@@ -8,6 +9,8 @@ import {
   unauthorizedResponse,
   internalErrorResponse,
 } from "@/lib/utils/api";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,31 +22,34 @@ export async function GET(req: NextRequest) {
     const days = parseInt(searchParams.get("days") ?? "30", 10);
     const since = subDays(new Date(), days);
 
-    // Parallel fetching for performance
-    const [totalSessions, allTasks, completedTasks, subjects, recentSessions] = await Promise.all([
-      prisma.studySession.aggregate({
-        where: { userId, completed: true },
-        _sum: { duration: true },
-      }),
-      prisma.task.count({ where: { userId } }),
-      prisma.task.count({ where: { userId, status: "COMPLETED" } }),
-      prisma.subject.findMany({
-        where: { userId },
-        include: {
-          studySessions: {
-            where: { completed: true, startTime: { gte: since } },
-            select: { duration: true },
+    const [totalSessions, allTasks, completedTasks, subjects, recentSessions] =
+      await Promise.all([
+        prisma.studySession.aggregate({
+          where: { userId, completed: true },
+          _sum: { duration: true },
+        }),
+        prisma.task.count({ where: { userId } }),
+        prisma.task.count({ where: { userId, status: "COMPLETED" } }),
+        prisma.subject.findMany({
+          where: { userId },
+          include: {
+            studySessions: {
+              where: { completed: true, startTime: { gte: since } },
+              select: { duration: true },
+            },
           },
-        },
-      }),
-      prisma.studySession.findMany({
-        where: { userId, completed: true, startTime: { gte: subDays(new Date(), 7) } },
-        select: { startTime: true, duration: true },
-        orderBy: { startTime: "asc" },
-      }),
-    ]);
+        }),
+        prisma.studySession.findMany({
+          where: {
+            userId,
+            completed: true,
+            startTime: { gte: subDays(new Date(), 7) },
+          },
+          select: { startTime: true, duration: true },
+          orderBy: { startTime: "asc" },
+        }),
+      ]);
 
-    // Weekly hours (last 7 days)
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = subDays(new Date(), 6 - i);
       return format(d, "yyyy-MM-dd");
@@ -51,6 +57,7 @@ export async function GET(req: NextRequest) {
 
     const weeklyMap: Record<string, number> = {};
     last7Days.forEach((d) => (weeklyMap[d] = 0));
+
     recentSessions.forEach((s) => {
       const day = format(s.startTime, "yyyy-MM-dd");
       if (weeklyMap[day] !== undefined) {
@@ -63,24 +70,34 @@ export async function GET(req: NextRequest) {
       hours: Math.round(weeklyMap[date] * 10) / 10,
     }));
 
-    // Subject hours
     const subjectHours = subjects
       .map((s) => ({
         name: s.name,
         color: s.color,
-        hours: Math.round((s.studySessions.reduce((sum, ss) => sum + (ss.duration ?? 0), 0) / 3600) * 10) / 10,
+        hours:
+          Math.round(
+            (s.studySessions.reduce((sum, ss) => sum + (ss.duration ?? 0), 0) /
+              3600) *
+              10
+          ) / 10,
       }))
       .filter((s) => s.hours > 0)
       .sort((a, b) => b.hours - a.hours);
 
-    // Streak calculation
     const sessionDays = await prisma.studySession.findMany({
       where: { userId, completed: true },
       select: { startTime: true },
       orderBy: { startTime: "desc" },
     });
 
-    const uniqueDays = [...new Set(sessionDays.map((s) => format(startOfDay(s.startTime), "yyyy-MM-dd")))];
+    const uniqueDays = [
+      ...new Set(
+        sessionDays.map((s) =>
+          format(startOfDay(s.startTime), "yyyy-MM-dd")
+        )
+      ),
+    ];
+
     let currentStreak = 0;
     let longestStreak = 0;
     let tempStreak = 0;
@@ -90,7 +107,11 @@ export async function GET(req: NextRequest) {
 
     if (uniqueDays.includes(today) || uniqueDays.includes(yesterday)) {
       for (let i = 0; i < uniqueDays.length; i++) {
-        const expected = format(subDays(new Date(), i + (uniqueDays[0] === today ? 0 : 1)), "yyyy-MM-dd");
+        const expected = format(
+          subDays(new Date(), i + (uniqueDays[0] === today ? 0 : 1)),
+          "yyyy-MM-dd"
+        );
+
         if (uniqueDays[i] === expected) {
           currentStreak++;
         } else {
@@ -105,13 +126,20 @@ export async function GET(req: NextRequest) {
       } else {
         const prev = new Date(uniqueDays[i - 1]);
         const curr = new Date(uniqueDays[i]);
-        const diff = Math.round((prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24));
+
+        const diff = Math.round(
+          (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
         tempStreak = diff === 1 ? tempStreak + 1 : 1;
       }
+
       longestStreak = Math.max(longestStreak, tempStreak);
     }
 
-    const totalHours = Math.round(((totalSessions._sum.duration ?? 0) / 3600) * 10) / 10;
+    const totalHours =
+      Math.round(((totalSessions._sum.duration ?? 0) / 3600) * 10) / 10;
+
     const topSubject = subjectHours[0] ?? null;
 
     return successResponse({
@@ -120,7 +148,10 @@ export async function GET(req: NextRequest) {
       longestStreak,
       tasksCompleted: completedTasks,
       tasksTotal: allTasks,
-      taskCompletionRate: allTasks > 0 ? Math.round((completedTasks / allTasks) * 100) / 100 : 0,
+      taskCompletionRate:
+        allTasks > 0
+          ? Math.round((completedTasks / allTasks) * 100) / 100
+          : 0,
       weeklyHours,
       subjectHours,
       topSubject,

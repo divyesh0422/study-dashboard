@@ -182,8 +182,11 @@ export function PomodoroTimer() {
       </AnimatePresence>
 
       {/* SVG ring timer */}
-      <div className="relative">
-        <svg width={280} height={280} className="-rotate-90">
+      <div className="relative w-[220px] h-[220px] sm:w-[280px] sm:h-[280px]">
+        <svg
+          viewBox="0 0 280 280"
+          className="w-full h-full -rotate-90"
+        >
           {/* Track */}
           <circle cx={140} cy={140} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={12} />
           {/* Progress */}
@@ -208,9 +211,9 @@ export function PomodoroTimer() {
               animate={{ scale: 1, opacity: 1 }}
               className="flex items-baseline gap-1"
             >
-              <span className="text-6xl font-bold tabular-nums tracking-tight">{m}</span>
-              <span className="text-4xl font-light text-muted-foreground animate-pulse">:</span>
-              <span className="text-6xl font-bold tabular-nums tracking-tight">{s}</span>
+              <span className="text-5xl sm:text-6xl font-bold tabular-nums tracking-tight">{m}</span>
+              <span className="text-3xl sm:text-4xl font-light text-muted-foreground animate-pulse">:</span>
+              <span className="text-5xl sm:text-6xl font-bold tabular-nums tracking-tight">{s}</span>
             </motion.div>
           </AnimatePresence>
           <p className="mt-1 text-xs text-muted-foreground">

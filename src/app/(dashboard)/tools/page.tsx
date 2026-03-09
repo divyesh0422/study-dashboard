@@ -84,14 +84,14 @@ export default function ToolsPage() {
   // ── Study mode: fetch full deck (with cards) before rendering ──
   if (studyDeckId) {
     return (
-      <div className="p-6 lg:p-8 max-w-2xl mx-auto">
+      <div className="p-4 lg:p-8 max-w-2xl mx-auto">
         <StudyModeLoader deckId={studyDeckId} onExit={() => setStudyDeckId(null)} />
       </div>
     );
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 animate-fade-in">
+    <div className="p-4 lg:p-8 space-y-6 animate-fade-in">
       <PageHeader
         title="Study Tools"
         description="Flashcard decks to master your subjects"
@@ -327,7 +327,7 @@ function DeckCard({
 
 // ── Manage Cards Dialog ───────────────────────────────────────
 
-async function ManageCardsDialog({ deckId, onClose }: { deckId: string; onClose: () => void }) {
+function ManageCardsDialog({ deckId, onClose }: { deckId: string; onClose: () => void }) {
   const { data: deck, isLoading } = useDeck(deckId);
   const addCard    = useAddCard();
   const deleteCard = useDeleteCard();
@@ -335,43 +335,17 @@ async function ManageCardsDialog({ deckId, onClose }: { deckId: string; onClose:
   const [front, setFront] = useState("");
   const [back,  setBack]  = useState("");
 
- if (!front.trim() || !back.trim()) return;
-
-try {
-  await addCard.mutateAsync({
-    deckId,
-    front: front.trim(),
-    back: back.trim(),
-    difficulty: "UNRATED"
-  });
-
-  setFront("");
-  setBack("");
-
-  toast.success("Card added!");
-} catch {
-  toast.error("Failed to add card");
-}
-
-  async function handleAdd(event: React.MouseEvent<HTMLButtonElement>) {
-  event.preventDefault();
-
-  if (!front.trim() || !back.trim()) return;
-
-  try {
-    await addCard.mutateAsync({
-      deckId,
-      front: front.trim(),
-      back: back.trim(),
-      difficulty: "UNRATED"
-    });
-
-    setFront("");
-    setBack("");
-  } catch (error) {
-    console.error("Failed to add card", error);
+  async function handleAdd() {
+    if (!front.trim() || !back.trim()) return;
+    try {
+      await addCard.mutateAsync({
+        deckId, front: front.trim(), back: back.trim(),
+        difficulty: "UNRATED"
+      });
+      setFront(""); setBack("");
+      toast.success("Card added!");
+    } catch { toast.error("Failed to add card"); }
   }
-}
 
   return (
     <Dialog open onOpenChange={onClose}>
