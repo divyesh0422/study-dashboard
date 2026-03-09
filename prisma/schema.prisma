@@ -1,0 +1,179 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  pomodoroWork   Int @default(25)
+  pomodoroBreak  Int @default(5)
+  pomodoroLong   Int @default(15)
+  dailyGoalHours Int @default(4)
+  theme          String  @default("system")
+  onboardingDone Boolean @default(false)
+  aiGuideEnabled Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  accounts       Account[]
+  sessions       Session[]
+  subjects       Subject[]
+  tasks          Task[]
+  notes          Note[]
+  studySessions  StudySession[]
+  flashcardDecks FlashcardDeck[]
+  @@map("users")
+}
+
+model Subject {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  color       String  @default("#6366f1")
+  icon        String  @default("BookOpen")
+  userId      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks          Task[]
+  notes          Note[]
+  studySessions  StudySession[]
+  flashcardDecks FlashcardDeck[]
+  @@index([userId])
+  @@map("subjects")
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+  userId      String
+  subjectId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  @@index([userId])
+  @@index([subjectId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  tags      String[] @default([])
+  isPinned  Boolean  @default(false)
+  userId    String
+  subjectId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  @@index([userId])
+  @@index([subjectId])
+  @@map("notes")
+}
+
+model StudySession {
+  id        String      @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime?
+  duration  Int?
+  type      SessionType @default(POMODORO)
+  completed Boolean     @default(false)
+  userId    String
+  subjectId String?
+  createdAt DateTime @default(now())
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  @@index([userId])
+  @@index([subjectId])
+  @@index([startTime])
+  @@map("study_sessions")
+}
+
+model FlashcardDeck {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  color       String  @default("#6366f1")
+  userId      String
+  subjectId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject    Subject?    @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  flashcards Flashcard[]
+  @@index([userId])
+  @@map("flashcard_decks")
+}
+
+model Flashcard {
+  id         String              @id @default(cuid())
+  front      String              @db.Text
+  back       String              @db.Text
+  difficulty FlashcardDifficulty @default(UNRATED)
+  deckId     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deck FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  @@index([deckId])
+  @@map("flashcards")
+}
+
+enum TaskStatus { PENDING IN_PROGRESS COMPLETED CANCELLED }
+enum TaskPriority { LOW MEDIUM HIGH URGENT }
+enum SessionType { POMODORO SHORT_BREAK LONG_BREAK FREE_STUDY }
+enum FlashcardDifficulty { UNRATED EASY MEDIUM HARD }
