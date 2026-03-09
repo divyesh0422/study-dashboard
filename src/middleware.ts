@@ -1,4 +1,5 @@
 // src/middleware.ts
+export { auth as middleware } from "@/lib/auth"
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
