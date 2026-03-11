@@ -1,97 +1,122 @@
 // src/app/api/ai/route.ts
-// src/app/api/ai/route.ts
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/lib/auth";
-import { unauthorizedResponse, internalErrorResponse, errorResponse } from "@/lib/utils/api";
-
+import {
+  unauthorizedResponse,
+  internalErrorResponse,
+  errorResponse,
+} from "@/lib/utils/api";
 
 export const runtime = "nodejs";
-
-// Required: prevents Next.js from trying to statically build this route
 export const dynamic = "force-dynamic";
 
-const SYSTEM_PROMPT = `You are StudyGuide AI — a friendly, expert study assistant built into a student study management dashboard.
+const SYSTEM_PROMPT = `You are StudyGuide AI — a friendly expert study assistant inside a student study dashboard.
 
 Your role is to:
-- Help students understand difficult concepts clearly and simply
-- Suggest effective study strategies tailored to their needs
-- Create concise study summaries from topics they describe
-- Recommend the best study techniques (Pomodoro, spaced repetition, active recall, etc.)
-- Answer academic questions across all subjects
-- Give motivational support when students feel overwhelmed
-- Help students break down large tasks into manageable steps
-- Suggest flashcard ideas for topics they're studying
+- Explain difficult concepts clearly
+- Suggest effective study strategies
+- Create summaries of topics
+- Recommend study techniques (Pomodoro, spaced repetition)
+- Help with academic questions
+- Break large tasks into manageable steps
+- Suggest flashcards for topics
 
 Guidelines:
-- Keep responses focused and concise (2-4 paragraphs max unless more detail is needed)
-- Use bullet points and formatting to make answers easy to scan
-- Always be encouraging and positive
-- If asked to explain a concept, use simple analogies and examples
-- When suggesting study strategies, be specific and actionable
-- You have context about the student's dashboard — subjects, tasks, sessions
-
-Always respond in a warm, friendly tone like a knowledgeable tutor who genuinely wants the student to succeed.`;
+- Keep responses concise (2–4 paragraphs)
+- Use bullet points when helpful
+- Be supportive and motivating
+- Use simple explanations and examples
+`;
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return unauthorizedResponse();
+    /* ---------------- AUTH CHECK ---------------- */
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return unauthorizedResponse();
+    }
+
+    /* ---------------- ENV CHECK ---------------- */
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+
+    if (!apiKey) {
       return errorResponse(
         "AI_UNAVAILABLE",
-        "AI Guide is not configured. Add ANTHROPIC_API_KEY to your environment variables.",
+        "ANTHROPIC_API_KEY is missing",
         503
       );
     }
 
-    // Instantiate inside the handler so it only runs at request time, not build time
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    /* ---------------- SAFE BODY PARSE ---------------- */
 
-    const body = await req.json();
+    let body: any;
+
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse("INVALID_BODY", "Invalid JSON body", 400);
+    }
+
     const { message, context, history = [] } = body;
 
-    if (!message?.trim()) {
+    if (!message || typeof message !== "string") {
       return errorResponse("INVALID_INPUT", "Message is required", 400);
     }
 
-    // Build messages array with history (last 10 messages)
+    /* ---------------- AI CLIENT ---------------- */
+
+    const anthropic = new Anthropic({
+      apiKey,
+    });
+
+    /* ---------------- MESSAGE HISTORY ---------------- */
+
     const messages: Anthropic.MessageParam[] = [
-      ...history.slice(-10).map((h: { role: string; content: string }) => ({
-        role:    h.role as "user" | "assistant",
-        content: h.content,
+      ...history.slice(-10).map((h: any) => ({
+        role: h.role === "assistant" ? "assistant" : "user",
+        content: String(h.content),
       })),
       {
-        role:    "user" as const,
-        content: context ? `[Context: ${context}]\n\n${message}` : message,
+        role: "user",
+        content: context
+          ? `[Context: ${context}]\n\n${message}`
+          : message,
       },
     ];
 
+    /* ---------------- AI REQUEST ---------------- */
+
     const response = await anthropic.messages.create({
-      model:      "claude-sonnet-4-5",
+      model: "claude-3-5-sonnet-latest",
       max_tokens: 1024,
-      system:     SYSTEM_PROMPT,
+      system: SYSTEM_PROMPT,
       messages,
     });
 
+    /* ---------------- EXTRACT TEXT ---------------- */
+
     const text = response.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as Anthropic.TextBlock).text)
+      .filter((block) => block.type === "text")
+      .map((block: any) => block.text)
       .join("\n");
 
-    return Response.json({
+    /* ---------------- RESPONSE ---------------- */
+
+    return NextResponse.json({
       data: {
-        reply:        text,
-        inputTokens:  response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
+        reply: text,
+        inputTokens: response.usage?.input_tokens ?? 0,
+        outputTokens: response.usage?.output_tokens ?? 0,
       },
     });
-  } catch (err) {
-    console.error("[AI_POST]", err);
+
+  } catch (error) {
+    console.error("AI API Error:", error);
     return internalErrorResponse();
   }
 }
