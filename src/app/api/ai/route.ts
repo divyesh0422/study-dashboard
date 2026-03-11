@@ -1,8 +1,13 @@
 // src/app/api/ai/route.ts
+// src/app/api/ai/route.ts
+
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/lib/auth";
 import { unauthorizedResponse, internalErrorResponse, errorResponse } from "@/lib/utils/api";
+
+
+export const runtime = "nodejs";
 
 // Required: prevents Next.js from trying to statically build this route
 export const dynamic = "force-dynamic";
