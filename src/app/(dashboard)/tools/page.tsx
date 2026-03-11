@@ -266,7 +266,6 @@ function DeckCard({
   deck: FlashcardDeck; index: number;
   onStudy: () => void; onManage: () => void; onDelete: () => void;
 }) {
-  // _count.flashcards is always present from the list API
   const count = deck._count?.flashcards ?? 0;
 
   return (
@@ -339,8 +338,10 @@ function ManageCardsDialog({ deckId, onClose }: { deckId: string; onClose: () =>
     if (!front.trim() || !back.trim()) return;
     try {
       await addCard.mutateAsync({
-        deckId, front: front.trim(), back: back.trim(),
-        difficulty: "UNRATED"
+        deckId,
+        front: front.trim(),
+        back: back.trim(),
+        difficulty: "UNRATED" as const,
       });
       setFront(""); setBack("");
       toast.success("Card added!");
@@ -358,27 +359,41 @@ function ManageCardsDialog({ deckId, onClose }: { deckId: string; onClose: () =>
           <p className="text-sm font-medium">Add new card</p>
           <div className="space-y-2">
             <Label className="text-xs">Front (Question)</Label>
-            <Input value={front} onChange={(e) => setFront(e.target.value)} placeholder="e.g. What is photosynthesis?" />
+            <Input
+              value={front}
+              onChange={(e) => setFront(e.target.value)}
+              placeholder="e.g. What is photosynthesis?"
+            />
           </div>
           <div className="space-y-2">
             <Label className="text-xs">Back (Answer)</Label>
-            <Input value={back} onChange={(e) => setBack(e.target.value)} placeholder="e.g. Process by which plants convert light…" />
+            <Input
+              value={back}
+              onChange={(e) => setBack(e.target.value)}
+              placeholder="e.g. Process by which plants convert light…"
+            />
           </div>
           <Button
             size="sm"
             onClick={handleAdd}
             disabled={!front.trim() || !back.trim() || addCard.isPending}
           >
-            {addCard.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+            {addCard.isPending
+              ? <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              : <Plus className="h-4 w-4 mr-1" />}
             Add Card
           </Button>
         </div>
 
         {/* Cards list */}
         {isLoading ? (
-          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
         ) : deck?.flashcards?.length === 0 ? (
-          <p className="text-center text-sm text-muted-foreground py-6">No cards yet. Add your first one above.</p>
+          <p className="text-center text-sm text-muted-foreground py-6">
+            No cards yet. Add your first one above.
+          </p>
         ) : (
           <div className="space-y-2">
             {deck?.flashcards?.map((card) => (
@@ -412,5 +427,3 @@ function ManageCardsDialog({ deckId, onClose }: { deckId: string; onClose: () =>
     </Dialog>
   );
 }
-
-
