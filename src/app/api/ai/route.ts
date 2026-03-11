@@ -4,9 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/lib/auth";
 import { unauthorizedResponse, internalErrorResponse, errorResponse } from "@/lib/utils/api";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY ?? "",
-});
+// Required: prevents Next.js from trying to statically build this route
+export const dynamic = "force-dynamic";
 
 const SYSTEM_PROMPT = `You are StudyGuide AI — a friendly, expert study assistant built into a student study management dashboard.
 
@@ -38,10 +37,15 @@ export async function POST(req: NextRequest) {
     if (!process.env.ANTHROPIC_API_KEY) {
       return errorResponse(
         "AI_UNAVAILABLE",
-        "AI Guide is not configured. Add ANTHROPIC_API_KEY to your .env file.",
+        "AI Guide is not configured. Add ANTHROPIC_API_KEY to your environment variables.",
         503
       );
     }
+
+    // Instantiate inside the handler so it only runs at request time, not build time
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
 
     const body = await req.json();
     const { message, context, history = [] } = body;
@@ -50,7 +54,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("INVALID_INPUT", "Message is required", 400);
     }
 
-    // Build messages array with history
+    // Build messages array with history (last 10 messages)
     const messages: Anthropic.MessageParam[] = [
       ...history.slice(-10).map((h: { role: string; content: string }) => ({
         role:    h.role as "user" | "assistant",
@@ -58,14 +62,12 @@ export async function POST(req: NextRequest) {
       })),
       {
         role:    "user" as const,
-        content: context
-          ? `[Context: ${context}]\n\n${message}`
-          : message,
+        content: context ? `[Context: ${context}]\n\n${message}` : message,
       },
     ];
 
     const response = await anthropic.messages.create({
-      model:      "claude-sonnet-4-6",
+      model:      "claude-sonnet-4-5",
       max_tokens: 1024,
       system:     SYSTEM_PROMPT,
       messages,
